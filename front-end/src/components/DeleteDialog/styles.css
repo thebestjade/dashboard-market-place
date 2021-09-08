@@ -1,0 +1,23 @@
+.keepProduct {
+  background-color: #007DFF;
+  color: white;
+}
+.removeProduct {
+  background-color: rgb(236, 90, 163);
+  color: white;
+}
+
+.keepProduct:hover{
+  background-color: #0c6ace;
+}
+.removeProduct:hover{
+  background-color: rgb(185, 46, 116);
+}
+.buttonsContainer{
+  display: flex;
+  justify-content: space-around;
+}
+.icon{
+  margin-left: 15px;
+  margin-top: 25px;
+}
