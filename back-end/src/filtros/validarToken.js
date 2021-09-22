@@ -1,26 +1,24 @@
-const conexao = require('../conexao');
+const knex = require('../conexao');
 const jwt = require('jsonwebtoken');
 const segredo = require('../segredo_jwt');
+const schemaToken = require('../validacoes_yup/schemaToken');
 
 const validarToken = async (req, res, next) => {
   const token = req.headers.authorization;
 
-  if(!token){
-    return res.status(400).json('O token é obrigatório');
-  }
-
   try {
 
+    await schemaToken.validate(req.headers.authorization);
+    
     const { id } = jwt.verify(token, segredo);
     
-    const query = 'select * from usuarios where id = $1';
-    const { rows, rowCount } = await conexao.query(query, [id]);
-
-    if(rowCount === 0){
+    const usuarioExiste = await knex('usuarios').where({ id }).first();
+    
+    if(!usuarioExiste){
       return res.status(404).json('Usuário não encontrado')
     }
 
-    const { senha, ...usuario } = rows[0];
+    const { senha, ...usuario } = usuarioExiste;
 
     req.usuario = usuario;
 

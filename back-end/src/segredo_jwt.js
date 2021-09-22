@@ -1,1 +1,1 @@
-module.exports = "sabaocracra"
+module.exports = process.env.SEGREDO_JWT;

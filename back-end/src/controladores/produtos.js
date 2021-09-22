@@ -1,4 +1,4 @@
-const conexao = require("../conexao");
+const knex = require("../conexao");
 const schemaCadastroProduto = require('../validacoes_yup/schemaCadastroProduto');
 const schemaIdDoProduto = require('../validacoes_yup/schemaIdDoProduto');
 
@@ -7,24 +7,17 @@ const listarProdutos = async (req, res) => {
   const { categoria } = req.query;
 
   try {
-    let condicao = '';
-    const params = [];
 
-    if (categoria) {
-      condicao += `and categoria ilike $2`;
-      params.push(`%${categoria}%`);
-    }
+    const produtos = await knex('produtos')
+      .where({ usuario_id: usuario.id })
+      .where(query => {
+        if (categoria) {
+          return query.where('categoria', 'ilike', `%${categoria}%`);
+        }
+      });
 
-    const produtos = await conexao.query(
-      `select * from produtos where usuario_id = $1 ${condicao}`,
-      [usuario.id, ...params]
-    );
-    
-    if (produtos.rowCount === 0) {
-      return res.status(404).json("Não há nenhum produto cadastrado");
-    }
+    return res.status(200).json(produtos);
 
-    return res.status(200).json(produtos.rows);
   } catch (error) {
     return res.status(400).json(error.message);
   }
@@ -38,16 +31,17 @@ const listarUmProduto = async (req, res) => {
 
     await schemaIdDoProduto.validate(req.params);
 
-    const produto = await conexao.query(
-      "select * from produtos where id = $1 and usuario_id = $2",
-      [idProduto, usuario.id]
-    );
+    const produto = await knex('produtos').where({
+      id: idProduto,
+      usuario_id: usuario.id
+    }).first();
 
-    if (produto.rowCount === 0) {
+    if (!produto) {
       return res.status(404).json("Este produto não está cadastrado");
     }
 
-    return res.status(200).json(produto.rows[0]);
+    return res.status(200).json(produto);
+
   } catch (error) {
     return res.status(400).json(error.message);
   }
@@ -61,25 +55,22 @@ const cadastrarProduto = async (req, res) => {
 
     await schemaCadastroProduto.validate(req.body);
 
-    const query =
-      `insert into produtos
-      (usuario_id, nome, estoque, categoria, preco, descricao, imagem)
-      values ($1, $2, $3, $4, $5, $6, $7)`;
-    const produtoCadastrado = await conexao.query(query, [
-      usuario.id,
+    const produtoCadastrado = await knex('produtos').insert({
+      usuario_id: usuario.id,
       nome,
       estoque,
       categoria,
       preco,
       descricao,
-      imagem,
-    ]);
+      imagem
+    }).returning('*');
 
-    if (produtoCadastrado.rowCount === 0) {
+    if (!produtoCadastrado) {
       return res.status(404).json("Não foi possível cadastrar produto");
     }
 
     return res.status(200).json("Produto cadastrado com sucesso!");
+
   } catch (error) {
     return res.status(400).json(error.message);
   }
@@ -98,68 +89,31 @@ const atualizarProduto = async (req, res) => {
 
     await schemaIdDoProduto.validate(req.params);
 
-    const produto = await conexao.query(
-      "select * from produtos where id = $1 and usuario_id = $2",
-      [idProduto, usuario.id]
-    );
+    const produtoEncontrado = await knex('produtos').where({
+      id: idProduto,
+      usuario_id: usuario.id
+    }).first();
 
-    if (produto.rowCount === 0) {
-      return res.status(404).json("Este produto não existe");
+    if (!produtoEncontrado) {
+      return res.status(404).json('Produto não encontrado');
     }
 
-    const body = {};
-    const params = [];
-    let n = 1;
+    const produto = await knex('produtos')
+      .where({ id: idProduto })
+      .update({
+        nome,
+        estoque,
+        preco,
+        categoria,
+        descricao
+      });
 
-    if (nome) {
-      body.nome = nome;
-      params.push(`nome = $${n}`);
-      n += 1;
-    }
-    if (estoque) {
-
-      body.estoque = estoque;
-      params.push(`estoque = $${n}`);
-      n += 1;
+    if (!produto) {
+      return res.status(400).json("O produto não foi atualizado");
     }
 
-    if (categoria) {
-      body.categoria = categoria;
-      params.push(`categoria = $${n}`);
-      n += 1;
-    }
+    return res.status(200).json('produto foi atualizado com sucesso.');
 
-    if (preco) {
-      body.preco = preco;
-      
-      params.push(`preco = $${n}`);
-      n += 1;
-    }
-
-    if (descricao) {
-      body.descricao = descricao;
-      params.push(`descricao = $${n}`);
-      n += 1;
-    }
-
-    if (imagem) {
-      body.imagem = imagem;
-      params.push(`imagem = $${n}`);
-      n += 1;
-    }
-
-    const valores = Object.values(body);
-    valores.push(idProduto);
-    valores.push(usuario.id)
-
-    const query = `update produtos set ${params.join(', ')} where id = $${n} and usuario_id = $${n + 1}`;
-    const produtoAtualizado = await conexao.query(query, valores);
-
-    if (produtoAtualizado.rowCount === 0) {
-      return res.status(200).json("O produto não pôde ser atualizado");
-    }
-
-    return res.status(200).json("Produto atualizado");
   } catch (error) {
     return res.status(400).json(error.message);
   }
@@ -173,25 +127,26 @@ const deletarProduto = async (req, res) => {
 
     await schemaIdDoProduto.validate(req.params);
 
-    const produto = await conexao.query(
-      "select * from produtos where id = $1 and usuario_id = $2",
-      [idProduto, usuario.id]
-    );
+    const produtoEncontrado = await knex('produtos').where({
+      id: idProduto,
+      usuario_id: usuario.id
+    }).first();
 
-    if (produto.rowCount === 0) {
-      return res.status(404).json("Este produto não existe");
+    if (!produtoEncontrado) {
+      return res.status(404).json('Produto não encontrado');
     }
 
-    const produtoDeletado = await conexao.query(
-      "delete from produtos where id = $1",
-      [idProduto]
-    );
+    const produtoExcluido = await knex('produtos').where({
+      id: idProduto,
+      usuario_id: usuario.id
+    }).del();
 
-    if (produtoDeletado.rowCount === 0) {
-      return res.status(400).json("Não foi possível deletar este produto");
+    if (!produtoExcluido) {
+      return res.status(400).json("O produto não foi excluido");
     }
 
-    return res.status(200).json("Produto deletado com sucesso!");
+    return res.status(200).json('Produto excluido com sucesso');
+    
   } catch (error) {
     return res.status(400).json(error.message);
   }
