@@ -1,6 +1,6 @@
 const conexao = require("../conexao");
-const jwt = require("jsonwebtoken");
-const segredo = require("../segredo_jwt");
+const schemaCadastroProduto = require('../validacoes_yup/schemaCadastroProduto');
+const schemaIdDoProduto = require('../validacoes_yup/schemaIdDoProduto');
 
 const listarProdutos = async (req, res) => {
   const { usuario } = req;
@@ -34,11 +34,10 @@ const listarUmProduto = async (req, res) => {
   const { usuario } = req;
   const { idProduto } = req.params;
 
-  if (!idProduto) {
-    return res.status(400).json("O id do produto é obrigatório");
-  }
-
   try {
+
+    await schemaIdDoProduto.validate(req.params);
+
     const produto = await conexao.query(
       "select * from produtos where id = $1 and usuario_id = $2",
       [idProduto, usuario.id]
@@ -58,20 +57,9 @@ const cadastrarProduto = async (req, res) => {
   const { usuario } = req;
   const { nome, estoque, categoria, preco, descricao, imagem } = req.body;
 
-  if (!nome) {
-    return res.status(400).json("O campo nome é obrigatório");
-  }
-  if (!estoque) {
-    return res.status(400).json("O campo estoque é obrigatório");
-  }
-  if (!preco) {
-    return res.status(400).json("O campo preco é obrigatório");
-  }
-  if (!descricao) {
-    return res.status(400).json("O campo descricao é obrigatório");
-  }
-
   try {
+
+    await schemaCadastroProduto.validate(req.body);
 
     const query =
       `insert into produtos
@@ -107,6 +95,9 @@ const atualizarProduto = async (req, res) => {
   }
 
   try {
+
+    await schemaIdDoProduto.validate(req.params);
+
     const produto = await conexao.query(
       "select * from produtos where id = $1 and usuario_id = $2",
       [idProduto, usuario.id]
@@ -178,11 +169,10 @@ const deletarProduto = async (req, res) => {
   const { usuario } = req;
   const { idProduto } = req.params;
 
-  if (!idProduto) {
-    return res.status(400).json("O id do produto é obrigatório");
-  }
-
   try {
+
+    await schemaIdDoProduto.validate(req.params);
+
     const produto = await conexao.query(
       "select * from produtos where id = $1 and usuario_id = $2",
       [idProduto, usuario.id]

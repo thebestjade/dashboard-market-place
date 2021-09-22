@@ -2,26 +2,17 @@ const conexao = require("../conexao");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const segredo = require("../segredo_jwt");
-
+const schemaCadastroUsuario = require('../validacoes_yup/schemaCadastroUsuario');
+const schemaLogin = require('../validacoes_yup/schemaLogin');
 
 
 const cadastrarUsuario = async (req, res) => {
   const { nome, email, senha, nome_loja } = req.body;
 
-  if (!nome) {
-    return res.status(400).json("O campo nome é obrigatório");
-  }
-  if (!email) {
-    return res.status(400).json("O campo email é obrigatório");
-  }
-  if (!senha) {
-    return res.status(400).json("O campo senha é obrigatório");
-  }
-  if (!nome_loja) {
-    return res.status(400).json("O campo nome_loja é obrigatório");
-  }
-
   try {
+
+    await schemaCadastroUsuario.validate(req.body);
+    
     const usuario = await conexao.query(
       "select * from usuarios where email = $1",
       [email]
@@ -51,14 +42,10 @@ const cadastrarUsuario = async (req, res) => {
 const login = async (req, res) => {
   const { email, senha } = req.body;
 
-  if (!email) {
-    return res.status(400).json("O campo email é obrigatório");
-  }
-  if (!senha) {
-    return res.status(400).json("O campo senha é obrigatório");
-  }
-
   try {
+
+    await schemaLogin.validate(req.body);
+    
     const usuarios = await conexao.query(
       "select * from usuarios where email = $1",
       [email]
