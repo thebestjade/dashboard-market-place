@@ -13,7 +13,7 @@ rotas.post('/login', usuarios.login);
 rotas.use(validarToken);
 
 rotas.get('/perfil', usuarios.perfilUsuario);
-rotas.put('/perfil', usuarios.editarPerfil);
+rotas.put('/perfil', usuarios.atualizarPerfil);
 
 //produtos
 

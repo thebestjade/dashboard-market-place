@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const segredo = require("../segredo_jwt");
 const schemaCadastroUsuario = require('../validacoes_yup/schemaCadastroUsuario');
 const schemaLogin = require('../validacoes_yup/schemaLogin');
+const nodemailer = require('../nodemailer');
 
 
 const cadastrarUsuario = async (req, res) => {
@@ -32,6 +33,15 @@ const cadastrarUsuario = async (req, res) => {
       return res.status(400).json("O usuário não pôde ser cadastrado");
     }
 
+    const dadosEnvio = {
+      from: "Market Cubos <nao-responder@marketcubos@email.com",
+      to: email,
+      subject: "Bem vindo ao Market Cubos!",
+      text: `Olá, ${nome}, estamos muito felizes pelo seu ingresso na nossa plataforma, espero que goste!`
+    }
+
+    nodemailer.sendMail(dadosEnvio);
+
     return res.status(200).json("Usuário cadastrado!");
 
   } catch (error) {
@@ -46,7 +56,7 @@ const login = async (req, res) => {
 
     await schemaLogin.validate(req.body);
 
-    const usuario = await knex('usuarios').where({ email });
+    const usuario = await knex('usuarios').where({ email }).first();
 
     if (!usuario) {
       return res.status(404).json("Usuário não cadastrado");
@@ -66,7 +76,7 @@ const login = async (req, res) => {
       usuario: dadosUsuario,
       token,
     });
-    
+
   } catch (error) {
     return res.status(400).json(error.message);
   }
@@ -78,7 +88,7 @@ const perfilUsuario = async (req, res) => {
 
 };
 
-const editarPerfil = async (req, res) => {
+const atualizarPerfil = async (req, res) => {
   const { id } = req.usuario;
   let { nome, email, senha, nome_loja } = req.body;
 
@@ -89,33 +99,32 @@ const editarPerfil = async (req, res) => {
   try {
 
     if (senha) {
-        senha = await bcrypt.hash(senha, 10);
+      senha = await bcrypt.hash(senha, 10);
     }
 
-    if (email !== usuario.email) {
-        const emailUsuarioExiste = await knex('usuarios').where({ email }).first();
-
-        if (emailUsuarioExiste) {
-            return res.status(404).json('O Email já existe.');
-        }
+    if (email !== req.usuario.email) {
+      const emailUsuarioExiste = await knex('usuarios').where({ email }).first();
+      if (emailUsuarioExiste) {
+        return res.status(404).json('O Email já existe.');
+      }
     }
 
     const usuarioAtualizado = await knex('usuarios')
-        .where({ id })
-        .update({
-            nome,
-            email,
-            senha,
-            nome_loja
-        });
+      .where({ id })
+      .update({
+        nome,
+        email,
+        senha,
+        nome_loja
+      });
 
     if (!usuarioAtualizado) {
-        return res.status(400).json("O usuario não foi atualizado");
+      return res.status(400).json("O usuario não foi atualizado");
     }
 
     return res.status(200).json('Usuario foi atualizado com sucesso.');
-    
-    
+
+
   } catch (error) {
     return res.status(400).json(error.message);
   }
@@ -125,5 +134,5 @@ module.exports = {
   cadastrarUsuario,
   login,
   perfilUsuario,
-  editarPerfil,
+  atualizarPerfil,
 };

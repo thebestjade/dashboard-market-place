@@ -1,14 +1,15 @@
 const knex = require('../conexao');
 const jwt = require('jsonwebtoken');
 const segredo = require('../segredo_jwt');
-const schemaToken = require('../validacoes_yup/schemaToken');
 
 const validarToken = async (req, res, next) => {
   const token = req.headers.authorization;
 
-  try {
+  if(!token){
+    return res.status(401).json("Não autorizado")
+  }
 
-    await schemaToken.validate(req.headers.authorization);
+  try {
     
     const { id } = jwt.verify(token, segredo);
     
